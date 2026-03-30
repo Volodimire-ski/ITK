@@ -15,28 +15,34 @@ public class ComplexTaskExecutor {
     public ComplexTaskExecutor(int numberOfComplexTasks) {
         resultOfAllThreads = Collections.synchronizedList(new ArrayList<>());
         this.numberOfComplexTasks = numberOfComplexTasks;
-        barrier = new CyclicBarrier(3,()->{
+        barrier = new CyclicBarrier(numberOfComplexTasks,()->{
             System.out.println("Barrier is broken");
-            if(resultOfAllThreads.size()==numberOfComplexTasks) {
-                int result = resultOfAllThreads.stream().flatMap(Collection::stream).mapToInt(a -> a).sum();
-                System.out.println("Final result after barrier: " + result);
-            }
+            int result = resultOfAllThreads.stream().flatMap(Collection::stream).mapToInt(a -> a).sum();
+            System.out.println("Final result after barrier: " + result);
         });
     }
     public void executeTasks(int countOfTasks) throws InterruptedException {
-        try(ExecutorService service = Executors.newFixedThreadPool(3)) {
+        try(ExecutorService service = Executors.newFixedThreadPool(countOfTasks)) {
             for(int i = 0;i<countOfTasks;i++) {
                 service.submit(() -> {
-                    ComplexTask task = new ComplexTask();
-                    resultOfAllThreads.add(task.execute());
+                    if(resultOfAllThreads.size()<numberOfComplexTasks) {
+                        ComplexTask task = new ComplexTask();
+                        List<Integer> resultOfTask = task.execute();
+                        synchronized (resultOfAllThreads) {
+                            if(resultOfAllThreads.size()<numberOfComplexTasks) {
+                                resultOfAllThreads.add(resultOfTask);
+                            }
+                            else return;
+                        }
                     try {
-                        System.out.println(Thread.currentThread().getName()+" reached the barrier");
+                        System.out.println(Thread.currentThread().getName() + " reached the barrier");
                         barrier.await();
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     } catch (BrokenBarrierException e) {
                         throw new RuntimeException(e);
                     }
+                }
                 });
             }
         }
