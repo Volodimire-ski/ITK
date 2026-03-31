@@ -4,18 +4,11 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ConcurrentBank {
-    private Map<UUID, BigDecimal> accounts;
+    private final Map<UUID, BankAccount> accounts = new ConcurrentHashMap<>();
 
     public BankAccount createAccount(double amount) {
         BankAccount newAccount = new BankAccount(amount);
-        if(accounts==null) {
-            synchronized (this) {
-                if(accounts==null) {
-                    accounts = new ConcurrentHashMap<>();
-                }
-            }
-        }
-        accounts.put(newAccount.getId(),newAccount.getBalance());
+        accounts.put(newAccount.getId(),newAccount);
         return newAccount;
     }
 
@@ -39,8 +32,8 @@ public class ConcurrentBank {
     }
     public BigDecimal getTotalBalance() {
         BigDecimal totalBalance = BigDecimal.valueOf(0);
-        for(Map.Entry<UUID,BigDecimal> m : accounts.entrySet()) {
-            totalBalance = totalBalance.add(m.getValue());
+        for(Map.Entry<UUID,BankAccount> m : accounts.entrySet()) {
+            totalBalance = totalBalance.add(m.getValue().getBalance());
         }
         return totalBalance;
     }
